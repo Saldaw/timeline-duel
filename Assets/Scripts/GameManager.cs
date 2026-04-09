@@ -23,6 +23,11 @@ public class GameManager : MonoBehaviour {
   public GameObject factArea;
   public TextMeshProUGUI factText;
 
+  [Header("Кнопки точной настройки")]
+  public Button plusButton;
+  public Button minusButton;
+  public int yearStep = 1;
+
   [Header("Счёт игроков")]
   public Transform scoresContainer;
   public GameObject playerScorePrefab;
@@ -90,6 +95,10 @@ public class GameManager : MonoBehaviour {
       restartButton.onClick.AddListener(RestartGame);
     if (menuButton != null)
       menuButton.onClick.AddListener(ReturnToMenu);
+    if (plusButton != null)
+      plusButton.onClick.AddListener(OnPlusButtonClicked);
+    if (minusButton != null)
+      minusButton.onClick.AddListener(OnMinusButtonClicked);
 
     gameOverPanel.SetActive(false);
     factArea.SetActive(false);
@@ -104,6 +113,24 @@ public class GameManager : MonoBehaviour {
     UpdateSliderColorForPlayer(currentPlayerIndex);
 
     StartNewRound();
+  }
+
+  void OnPlusButtonClicked() {
+    if (isRoundFinished)
+      return;
+
+    float newValue = yearSlider.value + yearStep;
+    newValue = Mathf.Clamp(newValue, yearSlider.minValue, yearSlider.maxValue);
+    yearSlider.value = newValue;
+  }
+
+  void OnMinusButtonClicked() {
+    if (isRoundFinished)
+      return;
+
+    float newValue = yearSlider.value - yearStep;
+    newValue = Mathf.Clamp(newValue, yearSlider.minValue, yearSlider.maxValue);
+    yearSlider.value = newValue;
   }
 
   void ResetAvailableInventions() {
