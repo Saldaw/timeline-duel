@@ -36,12 +36,12 @@ public class MainMenuManager : MonoBehaviour {
 
   private void OnPlayersChanged(float value) {
     int count = Mathf.RoundToInt(value);
-    playersCountText.text = $"Игроков: {count}";
+    playersCountText.text = $"Игроков: <b>{count}</b>";
   }
 
   private void OnRoundsChanged(float value) {
     int count = Mathf.RoundToInt(value);
-    roundsCountText.text = $"Изображений: {count}";
+    roundsCountText.text = $"Изображений: <b>{count}</b>";
   }
 
   private void StartGame() {

@@ -1,7 +1,8 @@
+using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
 
 public class GameManager : MonoBehaviour {
   [Header("Настройки игры")]
@@ -12,6 +13,7 @@ public class GameManager : MonoBehaviour {
   [Header("UI элементы")]
   public TextMeshProUGUI inventionNameText;
   public Image inventionImage;
+  public Image sliderFillImage;
   public Slider yearSlider;
   public TextMeshProUGUI selectedYearText;
   public Button mainButton;
@@ -43,6 +45,27 @@ public class GameManager : MonoBehaviour {
   private int numberOfPlayers;
   private int totalRounds;
 
+  [Header("Анимация карточки")]
+  public RectTransform inventionCard;
+  public CanvasGroup cardCanvasGroup;
+  public float flyOutDuration = 0.4f;
+  public float flyInDuration = 0.5f;
+  public AnimationCurve flyOutMoveCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
+  public AnimationCurve flyOutRotateCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
+  public AnimationCurve flyOutAlphaCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
+  public AnimationCurve flyInMoveCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
+  public AnimationCurve flyInRotateCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
+  public AnimationCurve flyInAlphaCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
+  public float flyOutRotationAmount = 20f;
+  public float flyInRotationAmount = -20f;
+
+  private Vector2 cardStartPosition;
+  private Vector2 offScreenLeft;
+  private Vector2 offScreenRight;
+  private bool isAnimating = false;
+  private List<InventionData> availableInventions;
+  private InventionData nextInvention;
+
   void Start() {
     numberOfPlayers = GameSettings.NumberOfPlayers;
     totalRounds = GameSettings.TotalRounds;
@@ -72,7 +95,19 @@ public class GameManager : MonoBehaviour {
     factArea.SetActive(false);
     sliderArea.SetActive(true);
 
+    ResetAvailableInventions();
+
+    cardStartPosition = inventionCard.anchoredPosition;
+    float screenWidth = GetComponentInParent<Canvas>().GetComponent<RectTransform>().rect.width;
+    offScreenLeft = new Vector2(-screenWidth * 1.5f, cardStartPosition.y);
+    offScreenRight = new Vector2(screenWidth * 1.5f, cardStartPosition.y);
+    UpdateSliderColorForPlayer(currentPlayerIndex);
+
     StartNewRound();
+  }
+
+  void ResetAvailableInventions() {
+    availableInventions = new List<InventionData>(allInventions);
   }
 
   void PrepareGameInventions() {
@@ -179,9 +214,11 @@ public class GameManager : MonoBehaviour {
   }
 
   void ProcessGuess() {
+    if (isAnimating)
+      return;
+
     int guessedYear = Mathf.RoundToInt(yearSlider.value);
     int correctYear = currentInvention.correctYear;
-
     int scoreEarned = CalculateScore(guessedYear, correctYear);
     playerScores[currentPlayerIndex] += scoreEarned;
     UpdateSingleScoreUI(currentPlayerIndex);
@@ -198,23 +235,60 @@ public class GameManager : MonoBehaviour {
 
     statusText.text = resultMessage;
 
-    sliderArea.SetActive(false);
-    factArea.SetActive(true);
-    factText.text = $"<b>Интересный факт:</b>\n{currentInvention.description}";
+    mainButton.interactable = false;
 
-    isRoundFinished = true;
-    buttonText.text = "Продолжить";
+    StartCoroutine(AnimateCardFlyOut(() => {
+      sliderArea.SetActive(false);
+      factArea.SetActive(true);
+      factText.text = $"<b>Интересный факт:</b>\n{currentInvention.description}";
+      isRoundFinished = true;
+      buttonText.text = "Продолжить";
+      mainButton.interactable = true;
+    }));
   }
 
   void ContinueToNextPlayer() {
-    currentPlayerIndex++;
+    if (isAnimating)
+      return;
 
-    if (currentPlayerIndex >= numberOfPlayers) {
-      currentPlayerIndex = 0;
+    bool isLastPlayerInRound = (currentPlayerIndex == numberOfPlayers - 1);
+
+    // Переключаем игрока
+    currentPlayerIndex = (currentPlayerIndex + 1) % numberOfPlayers;
+    if (currentPlayerIndex == 0)
       currentRound++;
+
+    // Проверка конца игры
+    if (currentRound >= totalRounds) {
+      EndGame();
+      return;
     }
 
-    StartNewRound();
+    mainButton.interactable = false;
+
+    if (isLastPlayerInRound) {
+      PrepareNextInvention();
+      StartCoroutine(AnimateCardFlyIn(() => {
+        StartNewRoundAfterAnimation();
+        mainButton.interactable = true;
+      }));
+    } else {
+      StartCoroutine(AnimateCardFlyInWithSameInvention(() => {
+        float startValue = (currentInvention.minYear + currentInvention.maxYear) / 2f;
+        yearSlider.value = startValue;
+        OnSliderChanged(startValue);
+
+        string playerColorHex = ColorUtility.ToHtmlStringRGB(GetPlayerColor(currentPlayerIndex));
+        statusText.text =
+            $"Раунд {currentRound + 1}/{totalRounds} | Ход <color=#{playerColorHex}>Игрока {currentPlayerIndex + 1}</color>";
+
+        sliderArea.SetActive(true);
+        factArea.SetActive(false);
+        isRoundFinished = false;
+        buttonText.text = "Угадать";
+        mainButton.interactable = true;
+      }));
+    }
   }
 
   int CalculateScore(int guess, int correct) {
@@ -290,5 +364,136 @@ public class GameManager : MonoBehaviour {
 
   void ReturnToMenu() {
     UnityEngine.SceneManagement.SceneManager.LoadScene("S_MainMenu");
+  }
+
+  void PrepareNextInvention() {
+    if (availableInventions.Count == 0)
+      ResetAvailableInventions();
+    int randomIndex = Random.Range(0, availableInventions.Count);
+    nextInvention = availableInventions[randomIndex];
+    availableInventions.RemoveAt(randomIndex);
+
+    inventionNameText.text = nextInvention.inventionName;
+    inventionImage.sprite = nextInvention.inventionImage;
+    yearSlider.minValue = nextInvention.minYear;
+    yearSlider.maxValue = nextInvention.maxYear;
+  }
+
+  void StartNewRoundAfterAnimation() {
+    currentInvention = nextInvention;
+    float startValue = (currentInvention.minYear + currentInvention.maxYear) / 2f;
+    yearSlider.value = startValue;
+    OnSliderChanged(startValue);
+
+    string playerColorHex = ColorUtility.ToHtmlStringRGB(GetPlayerColor(currentPlayerIndex));
+    statusText.text =
+        $"Раунд {currentRound + 1}/{totalRounds} | Ход <color=#{playerColorHex}>Игрока {currentPlayerIndex + 1}</color>";
+
+    sliderArea.SetActive(true);
+    factArea.SetActive(false);
+    isRoundFinished = false;
+    buttonText.text = "Угадать";
+    UpdateSliderColorForPlayer(currentPlayerIndex);
+  }
+
+  IEnumerator AnimateCardFlyOut(System.Action onComplete) {
+    isAnimating = true;
+    float elapsed = 0f;
+    Vector2 startPos = inventionCard.anchoredPosition;
+    Quaternion startRot = inventionCard.localRotation;
+    float startAlpha = cardCanvasGroup.alpha;
+    Quaternion targetRot = startRot * Quaternion.Euler(0, 0, flyOutRotationAmount);
+
+    while (elapsed < flyOutDuration) {
+      elapsed += Time.deltaTime;
+      float t = elapsed / flyOutDuration;
+
+      float moveT = flyOutMoveCurve.Evaluate(t);
+      float rotT = flyOutRotateCurve.Evaluate(t);
+      float alphaT = flyOutAlphaCurve.Evaluate(t);
+
+      inventionCard.anchoredPosition = Vector2.Lerp(startPos, offScreenLeft, moveT);
+      inventionCard.localRotation = Quaternion.Lerp(startRot, targetRot, rotT);
+      cardCanvasGroup.alpha = Mathf.Lerp(startAlpha, 0f, alphaT);
+      yield return null;
+    }
+
+    inventionCard.anchoredPosition = offScreenLeft;
+    cardCanvasGroup.alpha = 0f;
+    isAnimating = false;
+    onComplete?.Invoke();
+  }
+
+  void UpdateSliderColorForPlayer(int playerIndex) {
+    if (yearSlider != null && playerColors != null && playerIndex < playerColors.Length) {
+      sliderFillImage.color = playerColors[playerIndex];
+    }
+  }
+
+  IEnumerator AnimateCardFlyIn(System.Action onComplete) {
+    isAnimating = true;
+
+    inventionCard.anchoredPosition = offScreenRight;
+    inventionCard.localRotation = Quaternion.Euler(0, 0, flyInRotationAmount);
+    cardCanvasGroup.alpha = 0f;
+
+    float elapsed = 0f;
+    Vector2 startPos = offScreenRight;
+    Quaternion startRot = inventionCard.localRotation;
+    float startAlpha = 0f;
+
+    while (elapsed < flyInDuration) {
+      elapsed += Time.deltaTime;
+      float t = elapsed / flyInDuration;
+
+      float moveT = flyInMoveCurve.Evaluate(t);
+      float rotT = flyInRotateCurve.Evaluate(t);
+      float alphaT = flyInAlphaCurve.Evaluate(t);
+
+      inventionCard.anchoredPosition = Vector2.Lerp(startPos, cardStartPosition, moveT);
+      inventionCard.localRotation = Quaternion.Lerp(startRot, Quaternion.identity, rotT);
+      cardCanvasGroup.alpha = Mathf.Lerp(startAlpha, 1f, alphaT);
+      yield return null;
+    }
+
+    inventionCard.anchoredPosition = cardStartPosition;
+    inventionCard.localRotation = Quaternion.identity;
+    cardCanvasGroup.alpha = 1f;
+    isAnimating = false;
+    onComplete?.Invoke();
+  }
+
+  IEnumerator AnimateCardFlyInWithSameInvention(System.Action onComplete) {
+    isAnimating = true;
+
+    inventionCard.anchoredPosition = offScreenRight;
+    inventionCard.localRotation = Quaternion.Euler(0, 0, flyInRotationAmount);
+    cardCanvasGroup.alpha = 0f;
+
+    float elapsed = 0f;
+    Vector2 startPos = offScreenRight;
+    Quaternion startRot = inventionCard.localRotation;
+    float startAlpha = 0f;
+
+    while (elapsed < flyInDuration) {
+      elapsed += Time.deltaTime;
+      float t = elapsed / flyInDuration;
+
+      float moveT = flyInMoveCurve.Evaluate(t);
+      float rotT = flyInRotateCurve.Evaluate(t);
+      float alphaT = flyInAlphaCurve.Evaluate(t);
+
+      inventionCard.anchoredPosition = Vector2.Lerp(startPos, cardStartPosition, moveT);
+      inventionCard.localRotation = Quaternion.Lerp(startRot, Quaternion.identity, rotT);
+      cardCanvasGroup.alpha = Mathf.Lerp(startAlpha, 1f, alphaT);
+      yield return null;
+    }
+
+    inventionCard.anchoredPosition = cardStartPosition;
+    inventionCard.localRotation = Quaternion.identity;
+    cardCanvasGroup.alpha = 1f;
+    isAnimating = false;
+    UpdateSliderColorForPlayer(currentPlayerIndex);
+    onComplete?.Invoke();
   }
 }
