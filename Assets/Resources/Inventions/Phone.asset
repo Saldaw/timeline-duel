@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5e2f290de8e63294cb4cd0e161d0fb4b, type: 3}
+  m_Name: Phone
+  m_EditorClassIdentifier: 
+  inventionName: "\u0421\u043E\u0441\u0438\u0441\u043A\u0430"
+  minYear: 1800
+  maxYear: 2026
+  correctYear: 1953
+  inventionImage: {fileID: 21300000, guid: e3a68787482da144094f67b760216742, type: 3}
+  description: 
