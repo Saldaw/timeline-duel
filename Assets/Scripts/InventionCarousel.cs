@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -33,14 +34,14 @@ public class InventionCarousel : MonoBehaviour {
     public Canvas canvas;
   }
 
-  void Start() {
+  IEnumerator Start() {
+    yield return null;
     allInventions = new List<InventionData>(Resources.LoadAll<InventionData>("Inventions"));
     if (allInventions.Count == 0) {
       Debug.LogError("Нет изобретений в Resources/Inventions!");
-      return;
+      yield return null;
     }
 
-    SetupMask();
     CalculateSizes();
     CreateItems();
     InitialPlacement();
@@ -68,15 +69,6 @@ public class InventionCarousel : MonoBehaviour {
     }
 
     ApplyVisualEffects();
-  }
-
-  void SetupMask() {
-    if (!container.TryGetComponent<Mask>(out _))
-      container.gameObject.AddComponent<Mask>().showMaskGraphic = false;
-    if (!container.TryGetComponent<Image>(out var img)) {
-      img = container.gameObject.AddComponent<Image>();
-      img.color = new Color(1, 1, 1, 0.01f);
-    }
   }
 
   void CalculateSizes() {
