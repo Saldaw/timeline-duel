@@ -643,7 +643,7 @@ MonoBehaviour:
   centerSortingOrder: 10
   edgeSortingOrder: 0
   smoothLayerTransition: 1
-  layerSmoothSpeed: 0
+  layerSmoothSpeed: 2
 --- !u!222 &462778237
 CanvasRenderer:
   m_ObjectHideFlags: 0
