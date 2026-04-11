@@ -615,7 +615,7 @@ MonoBehaviour:
   scrollSpeed: 50
   overlapFactor: 0.3
   centerScale: 2
-  edgeScale: 0.5
+  edgeScale: 0
   scaleCurve:
     serializedVersion: 2
     m_Curve:
@@ -1178,7 +1178,7 @@ GameObject:
   - component: {fileID: 1280328801}
   - component: {fileID: 1280328800}
   m_Layer: 0
-  m_Name: Music
+  m_Name: Audio
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1464,7 +1464,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1447990600}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 1280328800}
+        m_TargetAssemblyTypeName: UnityEngine.AudioSource, UnityEngine
+        m_MethodName: PlayOneShot
+        m_Mode: 2
+        m_Arguments:
+          m_ObjectArgument: {fileID: 8300000, guid: 8a99573bb149d104fa37df76f3779bb1, type: 3}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.AudioClip, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &1447990600
 MonoBehaviour:
   m_ObjectHideFlags: 0
